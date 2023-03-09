@@ -6,6 +6,11 @@ username = url.searchParams.get("username");
 remoteUser = url.searchParams.get("remoteuser");
 let peerConnection;
 let remoteStream;
+let sendChannel;
+let receiveChannel;
+var msgInput = document.querySelector("#msg-input");
+var msgSendBtn = document.querySelector(".msg-send-button");
+var chatTextArea = document.querySelector(".chat-text-area");
 let init = async () => {
   localStream = await navigator.mediaDevices.getUserMedia({
     video: true,
@@ -65,8 +70,69 @@ let createPeerConnection = async () => {
       });
     }
   };
-};
 
+  sendChannel = peerConnection.createDataChannel("sendDataChannel");
+  sendChannel.onopen = () => {
+    console.log("Data channel is now open and ready to use");
+    onSendChannelStateChange();
+  };
+
+  peerConnection.ondatachannel = receiveChannelCallback;
+  // sendChannel.onmessage=onSendChannelMessageCallBack;
+};
+function sendData() {
+  const msgData = msgInput.value;
+  chatTextArea.innerHTML +=
+    "<div style='margin-top:2px; margin-bottom:2px;'><b>Me: </b>" +
+    msgData +
+    "</div>";
+  if (sendChannel) {
+    onSendChannelStateChange();
+    sendChannel.send(msgData);
+    msgInput.value = "";
+  } else {
+    receiveChannel.send(msgData);
+    msgInput.value = "";
+  }
+}
+function receiveChannelCallback(event) {
+  console.log("Receive Channel Callback");
+  receiveChannel = event.channel;
+  receiveChannel.onmessage = onReceiveChannelMessageCallback;
+  receiveChannel.onopen = onReceiveChannelStateChange;
+  receiveChannel.onclose = onReceiveChannelStateChange;
+}
+function onReceiveChannelMessageCallback(event) {
+  console.log("Received Message");
+  chatTextArea.innerHTML +=
+    "<div style='margin-top:2px; margin-bottom:2px;'><b>Stranger: </b>" +
+    event.data +
+    "</div>";
+}
+function onReceiveChannelStateChange() {
+  const readystate = receiveChannel.readystate;
+  console.log("Receive channel state is: " + readystate);
+  if (readystate === "open") {
+    console.log(
+      "Data channel ready state is open - onReceiveChannelStateChange"
+    );
+  } else {
+    console.log(
+      "Data channel ready state is NOT open - onReceiveChannelStateChange"
+    );
+  }
+}
+function onSendChannelStateChange() {
+  const readystate = sendChannel.readystate;
+  console.log("Send channel state is: " + readystate);
+  if (readystate === "open") {
+    console.log("Data channel ready state is open - onSendChannelStateChange");
+  } else {
+    console.log(
+      "Data channel ready state is NOT open - onSendChannelStateChange"
+    );
+  }
+}
 let createOffer = async () => {
   createPeerConnection();
   let offer = await peerConnection.createOffer();
@@ -108,4 +174,8 @@ socket.on("ReceiveAnswer", function (data) {
 
 socket.on("candidateReceiver", function (data) {
   peerConnection.addIceCandidate(data.iceCandidateData);
+});
+
+msgSendBtn.addEventListener("click", function (event) {
+  sendData();
 });
