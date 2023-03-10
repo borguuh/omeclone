@@ -1,9 +1,15 @@
 const express = require("express");
 const path = require("path");
 const bodyparser = require("body-parser");
-const PORT = process.env.PORT || 8080;
-const app = express();
 
+const app = express();
+const dotenv = require("dotenv");
+const connectDB = require("./Server/database/connection");
+
+dotenv.config({ path: "config.env" });
+const PORT = process.env.PORT || 8080;
+
+connectDB();
 app.use(bodyparser.urlencoded({ extended: true }));
 
 app.use(bodyparser.json());
